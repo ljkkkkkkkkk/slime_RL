@@ -13,3 +13,8 @@ __pycache__/
 *.log
 .env
 .DS_Store
+
+# wandb artifacts
+scripts/wandb/
+**/*.wandb
+wandb/
