@@ -1,0 +1,15 @@
+# do not upload experiments or huge artifacts
+exp/
+models/
+Qwen2.5-32B/
+
+# optional: usually not needed on github
+logs/
+data/
+
+# python junk
+__pycache__/
+*.pyc
+*.log
+.env
+.DS_Store
