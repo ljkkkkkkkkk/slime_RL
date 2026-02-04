@@ -34,6 +34,7 @@ source "/lianjiakun1/slime/scripts/models/qwen2.5-7B.sh"
 HF_MODEL="/lianjiakun1/models/Qwen2.5-Math-7B" 
 TORCH_DIST="/lianjiakun1/models/Qwen2.5-Math-7B_torch_dist"
 EXP_DIR="/lianjiakun1/exp/qwen25math7b_bf16" 
+LOG_DIR="/lianjiakun1/logs"
 
 CKPT_ARGS=(
   --hf-checkpoint "${HF_MODEL}"
@@ -45,30 +46,29 @@ CKPT_ARGS=(
 
 # 4. Rollout 配置 (针对 H20 96GB 显存优化)
 ROLLOUT_ARGS=(
-  --prompt-data /lianjiakun1/data/dataset/deepscaler/jsonl/train.jsonl
+  --prompt-data /lianjiakun1/data/math/math/train.jsonl
   --input-key prompt
-  --label-key label
+  --label-key reward_model.ground_truth
   --apply-chat-template
   --rollout-shuffle
-  # 确保这里使用了我们修复过的 reward_fn
   --custom-rm-path slime.rollout.rm_hub.reward_fn.compute_score
-
-  --num-rollout 128
-  --rollout-batch-size 64    # H20 显存大，BF16 下跑 7B 模型 32 毫无压力
+  
+  --num-rollout 200
+  --rollout-batch-size 32    
   --n-samples-per-prompt 8
   --rollout-max-response-len 2048
   --rollout-temperature 1
-
-  --global-batch-size 128    # 4卡 x 32
+  --num-steps-per-rollout 2
   --balance-data
 )
 
 EVAL_ARGS=(
   --eval-interval 20
-  --eval-prompt-data math /lianjiakun1/data/dataset/deepscaler/jsonl/math_100.jsonl
+  --eval-prompt-data  /lianjiakun1/data/math/math/test.jsonl
   --n-samples-per-eval-prompt 8
   --eval-max-response-len 2048
   --eval-top-p 1
+  --eval-temperature 0.6
 )
 
 # 5. 性能与并行配置 (TP1 在 7B 模型上效率最高)
@@ -83,7 +83,7 @@ PERF_ARGS=(
   --recompute-num-layers 1
 
   --use-dynamic-batch-size
-  --max-tokens-per-gpu 8192
+  --max-tokens-per-gpu 16384
   
   --bf16
 )
@@ -118,7 +118,7 @@ WANDB_ARGS=(
 
 SGLANG_ARGS=(
   --rollout-num-gpus-per-engine 1
-  --sglang-mem-fraction-static 0.75  
+  --sglang-mem-fraction-static 0.8  
 )
 
 MISC_ARGS=(
@@ -150,7 +150,7 @@ RUNTIME_ENV_JSON="{
 }"
 
 export PYTHONPATH="${PROJECT_ROOT}:${SLIME_ROOT}:$PYTHONPATH"
-
+LOG_FILE="${LOG_DIR}/train_$(date +%Y%m%d_%H%M%S).log"
 # 8. 提交任务
 ray job submit --address="http://127.0.0.1:8265" \
   --runtime-env-json="${RUNTIME_ENV_JSON}" \
@@ -167,4 +167,4 @@ ray job submit --address="http://127.0.0.1:8265" \
   ${PERF_ARGS[@]} \
   ${EVAL_ARGS[@]} \
   ${SGLANG_ARGS[@]} \
-  ${MISC_ARGS[@]}
+  ${MISC_ARGS[@]} 2>&1 | tee -a "${LOG_FILE}"

@@ -28,7 +28,7 @@ source "/lianjiakun1/slime/scripts/models/qwen2.5-7B.sh"
 HF_FP8="/lianjiakun1/models/Qwen2.5-Math-7B-FP8"
 TORCH_DIST="/lianjiakun1/models/Qwen2.5-Math-7B_torch_dist"
 EXP_DIR="/lianjiakun1/exp/qwen25math7b_int8"
-
+LOG_DIR="/lianjiakun1/logs"
 # 检查点参数
 CKPT_ARGS=(
   --hf-checkpoint "${HF_FP8}"
@@ -40,29 +40,29 @@ CKPT_ARGS=(
 
 # 生成参数
 ROLLOUT_ARGS=(
-  --prompt-data /lianjiakun1/data/dataset/deepscaler/jsonl/train.jsonl
+  --prompt-data /lianjiakun1/data/math/math/train.jsonl
   --input-key prompt
-  --label-key label
+  --label-key reward_model.ground_truth
   --apply-chat-template
   --rollout-shuffle
   --custom-rm-path slime.rollout.rm_hub.reward_fn.compute_score
   --num-rollout 200
-  --rollout-batch-size 16
+  --rollout-batch-size 32
   --n-samples-per-prompt 8
   --rollout-max-response-len 2048
   --rollout-temperature 1
-  --global-batch-size 128
+  --num-steps-per-rollout 2
   --balance-data
 )
 
 # 评估参数
 EVAL_ARGS=(
   --eval-interval 20
-  --eval-prompt-data math /lianjiakun1/data/dataset/deepscaler/jsonl/math_100.jsonl
+  --eval-prompt-data math /lianjiakun1/data/math/math/test.jsonl
   --n-samples-per-eval-prompt 8
   --eval-max-response-len 2048
   --eval-top-p 1
- # --eval_tmp
+  --eval-temperature 0.6
 )
 
 # 性能参数
@@ -75,7 +75,7 @@ PERF_ARGS=(
   --recompute-method uniform
   --recompute-num-layers 1
   --use-dynamic-batch-size
-  --max-tokens-per-gpu 8192
+  --max-tokens-per-gpu 16384
   #fp8
   --fp8-format e4m3
   --fp8-recipe blockwise
@@ -116,7 +116,7 @@ WANDB_ARGS=(
 # SGLang 参数
 SGLANG_ARGS=(
   --rollout-num-gpus-per-engine 1
-  --sglang-mem-fraction-static 0.75
+  --sglang-mem-fraction-static 0.8
 )
 
 # 杂项参数
@@ -144,7 +144,7 @@ RUNTIME_ENV_JSON="{
   }
 }"
 export PYTHONPATH="${PROJECT_ROOT}:${SLIME_ROOT}:$PYTHONPATH"
-
+LOG_FILE="${LOG_DIR}/train_$(date +%Y%m%d_%H%M%S).log"
 ray job submit --address="http://127.0.0.1:8265" \
   --runtime-env-json="${RUNTIME_ENV_JSON}" \
   -- python3 /lianjiakun1/slime/train.py \
@@ -160,4 +160,4 @@ ray job submit --address="http://127.0.0.1:8265" \
   ${PERF_ARGS[@]} \
   ${EVAL_ARGS[@]} \
   ${SGLANG_ARGS[@]} \
-  ${MISC_ARGS[@]}
+  ${MISC_ARGS[@]} 2>&1 | tee -a "${LOG_FILE}"

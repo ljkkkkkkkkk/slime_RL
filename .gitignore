@@ -18,3 +18,8 @@ __pycache__/
 scripts/wandb/
 **/*.wandb
 wandb/
+
+# wandb artifacts
+scripts/wandb/
+wandb/
+**/*.wandb

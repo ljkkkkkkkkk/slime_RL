@@ -80,12 +80,12 @@ async def compute_score(
     
     # 优先取 response，如果由于某种原因框架以后改名了，再尝试 res 作为备选
     solution_str = getattr(sample, 'response', getattr(sample, 'res', ""))
-    
     # 获取标准答案
-    ground_truth = getattr(sample, 'label', getattr(sample, 'ground_truth', ""))
-
-    # --- 调试日志（可选，确认没问题后可以删掉） ---
-    # print(f"[DEBUG] Processing sample: source={data_source}, len={len(solution_str)}")
+    ground_truth = getattr(sample, "label", None)
+    
+    if not ground_truth and isinstance(getattr(sample, "metadata", None), dict):
+        ground_truth = sample.metadata.get("reward_model.ground_truth") or sample.metadata.get("ground_truth")
+    ground_truth=ground_truth or ""
 
     # 2. 路由判分逻辑 (保持原样)
     res_val = 0.0
