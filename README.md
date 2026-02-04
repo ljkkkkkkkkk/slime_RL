@@ -6,6 +6,7 @@ This repository is used to run experiments for **low-precision training and roll
 
 ### 1. Prepare model files
 Create your own `models/` directory and download the model you want to use into it.
+And maybe you should use slimes/tools script to convert model type
 
 ### 2. Scripts overview
 Go to the `scripts/` directory. There are three example scripts:
